@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sensor Dashboard</title>
+  <!-- Google Fonts (optional) -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Globale Einstellungen */
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #121212;
+      color: #fff;
+    }
+    .container {
+      display: flex;
+      min-height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+      gap: 20px;
+    }
+    .sidebar {
+      width: 240px;
+      background-color: #1f1f1f;
+      padding: 20px;
+      box-sizing: border-box;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .sidebar a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .sidebar a:hover {
+      background-color: #333;
+    }
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    /* Obere Zeile: drei Boxen nebeneinander */
+    .top-row {
+      display: flex;
+      gap: 20px;
+    }
+    .top-row > .box {
+      border-radius: 8px;
+      background-color: #1e1e1e;
+      padding: 20px;
+      box-sizing: border-box;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      flex: 1; /* alle Boxen gleich breit */
+    }
+    .status-box {}
+    .vent-box {
+      text-align: center;
+    }
+    .hand-box {
+      text-align: center;
+    }
+
+    /* Grafik unten (eigene Zeile) */
+    .bottom-row {
+      width: 100%;
+    }
+    .chart-box {
+      width: 100%;
+      border-radius: 8px;
+      background-color: #1e1e1e;
+      padding: 20px;
+      box-sizing: border-box;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+    @media (max-width: 768px) {
+      .bottom-row {
+        display: none;
+      }
+      .container {
+        flex-direction: column;
+      }
+      .top-row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div>
+        <a href="/">Home</a>
+        <a href="/config">Config</a>
+        <a href="/logs">Logs</a>
+      </div>
+      <div>
+        <p style="font-size: 0.8em; text-align: center;">© 2025 Mein Projekt</p>
+      </div>
+    </div>
+
+    <!-- Hauptinhalt -->
+    <div class="main-content">
+      <!-- Obere Zeile mit drei Boxen -->
+      <div class="top-row">
+        
+        <!-- Box 1: Statusbox links -->
+        <div class="box status-box">
+          <h2>Status</h2>
+          <div id="status-info">Lade Status...</div>
+        </div>
+
+        <!-- Box 2: Ventilator-Status in der Mitte -->
+        <div class="box vent-box">
+          <h2>Ventilator-Status</h2>
+          <!-- Bild, das abhängig vom Relaiszustand ON/OFF gesetzt wird -->
+          <img id="ventImg"
+               src="/static/images/pm-white-sr-3d.png"
+               alt="Ventilator OFF"
+               style="width:120px;">
+        </div>
+
+        <!-- Box 3: Handbetrieb rechts -->
+        <div class="box hand-box">
+          <h2>Handbetrieb</h2>
+          <!-- Zeile mit EIN links, AUS rechts -->
+          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>EIN</span>
+            <span>AUS</span>
+          </div>
+          <!-- Bild zentriert darunter -->
+          <div style="text-align: center;">
+            <img id="handImg"
+                 src="/static/images/ss-long-right-3d.png"
+                 alt="Hand OFF"
+                 style="width:120px; cursor:pointer;">
+          </div>
+          <p style="font-size:0.9em; margin-top:10px; text-align:center;">Klicken zum Schalten</p>
+        </div>
+        
+      </div> <!-- Ende .top-row -->
+
+      <!-- Untere Zeile: Grafik -->
+      <div class="bottom-row">
+        <div class="box chart-box">
+          <canvas id="myChart"></canvas>
+        </div>
+      </div>
+    </div> <!-- Ende .main-content -->
+  </div> <!-- Ende .container -->
+
+  <script>
+    // ------------------ Chart.js initialisieren ------------------
+    const ctx = document.getElementById('myChart').getContext('2d');
+    const myChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Inside Absolute Humidity',
+            data: [],
+            borderColor: 'rgba(75, 192, 192, 1)',
+            fill: false
+          },
+          {
+            label: 'Outside Absolute Humidity',
+            data: [],
+            borderColor: 'rgba(192, 75, 192, 1)',
+            fill: false
+          },
+          {
+            label: 'Difference',
+            data: [],
+            borderColor: 'rgba(192, 192, 75, 1)',
+            fill: false
+          }
+        ]
+      },
+      options: {
+        scales: {
+          x: { title: { display: true, text: 'Zeit' } },
+          y: { title: { display: true, text: 'Wert' } }
+        }
+      }
+    });
+
+    // ------------------ Update der Grafik ------------------
+    function updateChart() {
+      fetch('/api/dashboard')
+        .then(response => response.json())
+        .then(data => {
+          const timestamps = data.map(entry => new Date(entry.timestamp * 1000).toLocaleTimeString());
+          const insideData = data.map(entry => entry.inside_absolute_humidity);
+          const outsideData = data.map(entry => entry.outside_absolute_humidity);
+          const diffData = data.map(entry => entry.difference);
+
+          myChart.data.labels = timestamps;
+          myChart.data.datasets[0].data = insideData;
+          myChart.data.datasets[1].data = outsideData;
+          myChart.data.datasets[2].data = diffData;
+          myChart.update();
+        })
+        .catch(error => console.error('Fehler beim Laden der Grafikdaten:', error));
+    }
+
+    // ------------------ Update des Status (links) ------------------
+    function updateStatus() {
+      fetch('/api/status')
+        .then(response => response.json())
+        .then(data => {
+          let html = '<ul>';
+          html += `<li><strong>Station:</strong> ${data.api_station || 'n.a.'}</li>`;
+          html += `<li><strong>Relay:</strong> ${data.regulation_state || 'n.a.'}</li>`;
+          html += `<li><strong>Temp (innen):</strong> ${data.local_temperature} °C</li>`;
+          html += `<li><strong>Luftfeuchtigkeit (innen):</strong> ${data.local_humidity} %</li>`;
+          html += `<li><strong>Inside AH:</strong> ${data.inside_absolute_humidity}</li>`;
+          html += `<li><strong>Outside AH:</strong> ${data.outside_absolute_humidity || 'n.a.'}</li>`;
+          html += `<li><strong>Diff:</strong> ${data.difference || 'n.a.'}</li>`;
+          html += '</ul>';
+          document.getElementById('status-info').innerHTML = html;
+        })
+        .catch(error => console.error('Fehler beim Laden des Status:', error));
+    }
+
+    // ------------------ Update Ventilator-Status (Mitte) ------------------
+    function updateVentilatorStatus() {
+      fetch('/api/relay') // liefert { "relay_state": { "state": bool, "mode": "Auto"/"Hand"/"Aus" } }
+        .then(response => response.json())
+        .then(data => {
+          const relayState = data.relay_state.state; // true/false
+          const ventImg = document.getElementById('ventImg');
+          // Bei ON:
+          if (relayState) {
+            ventImg.src = "/static/images/pl-green-srx-3d.png";
+            ventImg.alt = "Ventilator EIN";
+          }
+          // Bei OFF:
+          else {
+            ventImg.src = "/static/images/pm-white-sr-3d.png";
+            ventImg.alt = "Ventilator AUS";
+          }
+        })
+        .catch(error => console.error("Fehler beim Lesen des Relaiszustands (Ventilator-Status):", error));
+    }
+
+    // ------------------ Handbetrieb: Klick auf Bild toggelt EIN/AUS ------------------
+    function handleHandToggle() {
+      // Prüfe, ob das Relais derzeit an oder aus ist:
+      fetch('/api/relay')
+        .then(response => response.json())
+        .then(data => {
+          const relayState = data.relay_state.state; // bool
+          if (relayState) {
+            // Relais ist EIN, also ausschalten
+            turnOff();
+          } else {
+            // Relais ist AUS, also einschalten
+            turnOn();
+          }
+        })
+        .catch(error => console.error("Fehler bei handleHandToggle:", error));
+    }
+
+    function turnOn() {
+      fetch('/api/relay/on', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delay: 0 })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log(data.message);
+        // Bild für Handbetrieb auf EIN setzen
+        document.getElementById('handImg').src = "/static/images/ss-long-left-3d.png";
+        // Danach Ventilator-Status aktualisieren
+        updateVentilatorStatus();
+      })
+      .catch(error => console.error("Fehler beim Einschalten:", error));
+    }
+
+    function turnOff() {
+      fetch('/api/relay/off', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delay: 0 })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log(data.message);
+        // Bild für Handbetrieb auf AUS setzen
+        document.getElementById('handImg').src = "/static/images/ss-long-right-3d.png";
+        updateVentilatorStatus();
+      })
+      .catch(error => console.error("Fehler beim Ausschalten:", error));
+    }
+
+    // Klick-Listener für das Handbild
+    document.getElementById('handImg').addEventListener('click', handleHandToggle);
+
+    // ------------------ Periodische Updates ------------------
+    function updateAll() {
+      updateStatus();
+      updateChart();
+      updateVentilatorStatus();
+    }
+
+    // Erststart
+    updateAll(); 
+    setInterval(updateAll, 5000);
+  </script>
+</body>
+</html>

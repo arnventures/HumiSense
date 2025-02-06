@@ -1,0 +1,16 @@
+{
+    "api_station_id": "ARO",
+    "regulation": {
+        "api_poll_interval": 600,
+        "local_sensor_poll_interval": 1,
+        "max_on_time": 30,
+        "off_delay": 30,
+        "off_threshold": 5.7,
+        "on_delay": 60,
+        "on_threshold": 6
+    },
+    "logging": {
+        "log_file": "log.json"
+    },
+    "relay_mode": "Hand"
+}

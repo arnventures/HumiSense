@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Konfiguration</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
+  <style>
+    /* Gleiche Styles wie im Home */
+    body {
+      margin: 0; font-family: 'Roboto', sans-serif;
+      background-color: #121212; color: #fff;
+    }
+    .container {
+      display: flex; min-height: 100vh;
+      padding: 20px; box-sizing: border-box; gap: 20px;
+    }
+    .sidebar {
+      width: 240px; background-color: #1f1f1f; padding: 20px;
+      box-sizing: border-box; border-radius: 8px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .sidebar a {
+      display: block; color: #fff; text-decoration: none;
+      margin-bottom: 10px; padding: 10px; border-radius: 4px;
+    }
+    .sidebar a:hover {
+      background-color: #333;
+    }
+    .main-content {
+      flex: 1; display: flex; flex-direction: column; gap: 20px;
+    }
+    .row {
+      display: flex; gap: 20px;
+    }
+    .row > .box {
+      border-radius: 8px; background-color: #1e1e1e; padding: 20px;
+      box-sizing: border-box; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      flex: 1;
+    }
+    input {
+      width: 100%; padding: 8px; margin: 5px 0;
+      border: 1px solid #444; border-radius: 4px;
+      background-color: #2a2a2a; color: #fff;
+      box-sizing: border-box;
+    }
+    label {
+      margin-top: 10px; display: block; font-weight: 500;
+    }
+    .mode-box { text-align: center; }
+    .mode-box img { width: 100px; cursor: pointer; }
+    @media (max-width:768px) {
+      .container { flex-direction: column; }
+      .row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div>
+        <a href="/">Home</a>
+        <a href="/config">Config</a>
+        <a href="/logs">Logs</a>
+      </div>
+      <div>
+        <p style="font-size: 0.8em; text-align: center;">© 2025 Mein Projekt</p>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <!-- Zeile 1: Wetterstation / Logging -->
+      <div class="row">
+        <div class="box">
+          <h2>Wetterstation</h2>
+          <label>API Station ID</label>
+          <input type="text" id="api_station_id" />
+        </div>
+        <div class="box">
+          <h2>Logging</h2>
+          <label>Log File</label>
+          <input type="text" id="log_file" />
+        </div>
+      </div>
+
+      <!-- Zeile 2: Daten-Regulation / Relay-Einstellungen -->
+      <div class="row">
+        <div class="box">
+          <h2>Daten-Regulation</h2>
+          <label>API Poll Interval (s)</label>
+          <input type="number" id="api_poll_interval" />
+          <label>Local Sensor Poll Interval (s)</label>
+          <input type="number" id="local_sensor_poll_interval" />
+        </div>
+        <div class="box">
+          <h2>Relay-Einstellungen</h2>
+          <label>Max On Time (s)</label>
+          <input type="number" id="max_on_time" />
+          <label>Off Delay (s)</label>
+          <input type="number" id="off_delay" />
+          <label>Off Threshold</label>
+          <input type="number" step="any" id="off_threshold" />
+          <label>On Delay (s)</label>
+          <input type="number" id="on_delay" />
+          <label>On Threshold</label>
+          <input type="number" step="any" id="on_threshold" />
+        </div>
+      </div>
+
+      <!-- Zeile 3: Betriebsmodus -->
+      <div class="row">
+        <div class="box mode-box">
+          <h2>Betriebsmodus</h2>
+          <p>(Klick auf das Bild rotiert: Auto -> Hand -> Aus)</p>
+          <img id="modeImg" src="/static/images/ss-short-left-3d.png" alt="Auto" />
+          <p id="modeLabel" style="margin-top:10px;">Aktueller Modus: <span id="modeText">Auto</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 1) Modi in Reihenfolge
+    const modes = ["Auto", "Hand", "Aus"];
+    let currentIndex = 0; // 0=Auto, 1=Hand, 2=Aus
+
+    // 2) Klick-Listener init
+    function initModeSwitcher() {
+      document.getElementById('modeImg').addEventListener('click', rotateMode);
+    }
+
+    function rotateMode() {
+      currentIndex = (currentIndex + 1) % modes.length;
+      const newMode = modes[currentIndex];
+      setMode(newMode);
+    }
+
+    function setMode(newMode) {
+      const modeImg = document.getElementById('modeImg');
+      const modeText = document.getElementById('modeText');
+      
+      modeText.textContent = newMode;
+      if (newMode === "Hand") {
+        modeImg.src = "/static/images/ss-short-mid-3d.png";
+        modeImg.alt = "Hand";
+      } else if (newMode === "Aus") {
+        modeImg.src = "/static/images/ss-short-right-3d.png";
+        modeImg.alt = "Aus";
+      } else {
+        // Default: Auto
+        modeImg.src = "/static/images/ss-short-left-3d.png";
+        modeImg.alt = "Auto";
+      }
+      
+      // Sende POST an /api/relay/mode (oder /api/config?), je nach Backend-Design
+      fetch('/api/relay/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: newMode })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Neuer Modus:", data);
+      })
+      .catch(err => console.error("Fehler beim Setzen des Modus:", err));
+    }
+
+    // 3) Beim Laden aus /api/relay (oder /api/config?) den aktuellen Modus holen
+    function loadCurrentMode() {
+      fetch('/api/relay')
+        .then(res => res.json())
+        .then(data => {
+          const relayMode = data.relay_state.mode || "Auto";
+          currentIndex = modes.indexOf(relayMode);
+          if (currentIndex < 0) currentIndex = 0;
+          setMode(modes[currentIndex]);
+        })
+        .catch(err => console.error("Fehler beim Laden des Modus:", err));
+    }
+
+    // Optional: restliche Config laden (Station ID, etc.)
+    function loadConfig() {
+      fetch('/api/config')
+        .then(res => res.json())
+        .then(cfg => {
+          // Fülle Felder
+          document.getElementById('api_station_id').value = cfg.api_station_id;
+          document.getElementById('log_file').value = cfg.logging.log_file;
+          document.getElementById('api_poll_interval').value = cfg.regulation.api_poll_interval;
+          document.getElementById('local_sensor_poll_interval').value = cfg.regulation.local_sensor_poll_interval;
+          document.getElementById('max_on_time').value = cfg.regulation.max_on_time;
+          document.getElementById('off_delay').value = cfg.regulation.off_delay;
+          document.getElementById('off_threshold').value = cfg.regulation.off_threshold;
+          document.getElementById('on_delay').value = cfg.regulation.on_delay;
+          document.getElementById('on_threshold').value = cfg.regulation.on_threshold;
+        })
+        .catch(err => console.error("Fehler beim Laden der Config:", err));
+    }
+
+    // Aufruf beim Laden
+    initModeSwitcher();
+    loadCurrentMode();
+    loadConfig();
+  </script>
+</body>
+</html>
