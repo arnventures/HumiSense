@@ -41,6 +41,8 @@ import routes.api_routes as api_mod
 api_mod.regulation_service = regulation_service
 api_mod.parameter_service = parameter_service
 api_mod.relay_service = relay_service
+api_mod.station_service = station_service
+
 
 if __name__ == "__main__":
     try:

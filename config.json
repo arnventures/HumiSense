@@ -1,16 +1,16 @@
 {
-    "api_station_id": "ARO",
+    "api_station_id": "HAI",
     "regulation": {
         "api_poll_interval": 600,
         "local_sensor_poll_interval": 1,
         "max_on_time": 30,
-        "off_delay": 30,
-        "off_threshold": 5.7,
+        "off_delay": 10,
+        "off_threshold": 6.7,
         "on_delay": 60,
-        "on_threshold": 6
+        "on_threshold": 7
     },
     "logging": {
-        "log_file": "log.json"
+        "log_file": "new.json"
     },
-    "relay_mode": "Hand"
+    "relay_mode": "Auto"
 }

@@ -8,50 +8,89 @@
   <style>
     /* Gleiche Styles wie im Home */
     body {
-      margin: 0; font-family: 'Roboto', sans-serif;
-      background-color: #121212; color: #fff;
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #121212;
+      color: #fff;
     }
     .container {
-      display: flex; min-height: 100vh;
-      padding: 20px; box-sizing: border-box; gap: 20px;
+      display: flex;
+      min-height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+      gap: 20px;
     }
     .sidebar {
-      width: 240px; background-color: #1f1f1f; padding: 20px;
-      box-sizing: border-box; border-radius: 8px;
-      display: flex; flex-direction: column; justify-content: space-between;
+      width: 240px;
+      background-color: #1f1f1f;
+      padding: 20px;
+      box-sizing: border-box;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
     .sidebar a {
-      display: block; color: #fff; text-decoration: none;
-      margin-bottom: 10px; padding: 10px; border-radius: 4px;
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 4px;
     }
     .sidebar a:hover {
       background-color: #333;
     }
     .main-content {
-      flex: 1; display: flex; flex-direction: column; gap: 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
     .row {
-      display: flex; gap: 20px;
+      display: flex;
+      gap: 20px;
     }
     .row > .box {
-      border-radius: 8px; background-color: #1e1e1e; padding: 20px;
-      box-sizing: border-box; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      border-radius: 8px;
+      background-color: #1e1e1e;
+      padding: 20px;
+      box-sizing: border-box;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
       flex: 1;
     }
-    input {
-      width: 100%; padding: 8px; margin: 5px 0;
-      border: 1px solid #444; border-radius: 4px;
-      background-color: #2a2a2a; color: #fff;
+    input, button {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: #2a2a2a;
+      color: #fff;
       box-sizing: border-box;
     }
-    label {
-      margin-top: 10px; display: block; font-weight: 500;
+    button {
+      cursor: pointer;
     }
-    .mode-box { text-align: center; }
-    .mode-box img { width: 100px; cursor: pointer; }
+    label {
+      margin-top: 10px;
+      display: block;
+      font-weight: 500;
+    }
+    .mode-box {
+      text-align: center;
+    }
+    .mode-box img {
+      width: 100px;
+      cursor: pointer;
+    }
     @media (max-width:768px) {
-      .container { flex-direction: column; }
-      .row { flex-direction: column; }
+      .container {
+        flex-direction: column;
+      }
+      .row {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
@@ -74,8 +113,11 @@
       <div class="row">
         <div class="box">
           <h2>Wetterstation</h2>
-          <label>API Station ID</label>
-          <input type="text" id="api_station_id" />
+          <label>Station auswählen</label>
+          <!-- Statt eines Texteingabefeldes nun ein Select -->
+          <select id="api_station_select">
+            <option value="">Lade Stationen...</option>
+          </select>
         </div>
         <div class="box">
           <h2>Logging</h2>
@@ -117,6 +159,18 @@
           <p id="modeLabel" style="margin-top:10px;">Aktueller Modus: <span id="modeText">Auto</span></p>
         </div>
       </div>
+
+      <!-- Zeile 4: Aktionen (Speichern, Download, Upload) -->
+      <div class="row">
+        <div class="box">
+          <h2>Aktionen</h2>
+          <button id="saveConfigButton">Speichern</button>
+          <button id="downloadConfigButton">Download</button>
+          <!-- Verstecktes File-Input für Upload -->
+          <input type="file" id="uploadConfigInput" style="display: none;" accept=".json">
+          <button id="uploadConfigButton">Upload</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -125,7 +179,7 @@
     const modes = ["Auto", "Hand", "Aus"];
     let currentIndex = 0; // 0=Auto, 1=Hand, 2=Aus
 
-    // 2) Klick-Listener init
+    // 2) Klick-Listener für Modus-Switcher
     function initModeSwitcher() {
       document.getElementById('modeImg').addEventListener('click', rotateMode);
     }
@@ -153,7 +207,7 @@
         modeImg.alt = "Auto";
       }
       
-      // Sende POST an /api/relay/mode (oder /api/config?), je nach Backend-Design
+      // Sende POST an /api/relay/mode (oder /api/config, je nach Backend)
       fetch('/api/relay/mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,7 +220,7 @@
       .catch(err => console.error("Fehler beim Setzen des Modus:", err));
     }
 
-    // 3) Beim Laden aus /api/relay (oder /api/config?) den aktuellen Modus holen
+    // 3) Beim Laden den aktuellen Modus holen
     function loadCurrentMode() {
       fetch('/api/relay')
         .then(res => res.json())
@@ -179,13 +233,15 @@
         .catch(err => console.error("Fehler beim Laden des Modus:", err));
     }
 
-    // Optional: restliche Config laden (Station ID, etc.)
+    // 4) Bestehende Config laden und Felder befüllen
     function loadConfig() {
       fetch('/api/config')
         .then(res => res.json())
         .then(cfg => {
-          // Fülle Felder
-          document.getElementById('api_station_id').value = cfg.api_station_id;
+          // Statt eines Eingabefelds für die Station-ID setzen wir den Wert des Selects:
+          if(cfg.api_station_id) {
+            document.getElementById('api_station_select').value = cfg.api_station_id;
+          }
           document.getElementById('log_file').value = cfg.logging.log_file;
           document.getElementById('api_poll_interval').value = cfg.regulation.api_poll_interval;
           document.getElementById('local_sensor_poll_interval').value = cfg.regulation.local_sensor_poll_interval;
@@ -194,14 +250,138 @@
           document.getElementById('off_threshold').value = cfg.regulation.off_threshold;
           document.getElementById('on_delay').value = cfg.regulation.on_delay;
           document.getElementById('on_threshold').value = cfg.regulation.on_threshold;
+          // Optional: Wenn in der Config der relay_mode enthalten ist, diesen auch setzen
+          if(cfg.relay_mode) {
+            const index = modes.indexOf(cfg.relay_mode);
+            currentIndex = index >= 0 ? index : 0;
+            setMode(modes[currentIndex]);
+          }
         })
         .catch(err => console.error("Fehler beim Laden der Config:", err));
     }
 
-    // Aufruf beim Laden
+    // 5) Stationen von der API laden und den Select befüllen
+    function loadStations() {
+      fetch('/api/stations')
+        .then(res => res.json())
+        .then(data => {
+          const select = document.getElementById('api_station_select');
+          select.innerHTML = ""; // Leere den Select zunächst
+          if(data.stations && data.stations.length > 0) {
+            data.stations.forEach(station => {
+              const option = document.createElement('option');
+              option.value = station.id;
+              option.textContent = `${station.station_name} (${station.id})`;
+              select.appendChild(option);
+            });
+          } else {
+            const option = document.createElement('option');
+            option.value = "";
+            option.textContent = "Keine Stationen gefunden";
+            select.appendChild(option);
+          }
+        })
+        .catch(err => {
+          console.error("Fehler beim Laden der Stationen:", err);
+          const select = document.getElementById('api_station_select');
+          select.innerHTML = "<option value=''>Fehler beim Laden</option>";
+        });
+    }
+
+    // 6) Konfiguration speichern
+    function saveConfig() {
+      const config = {
+        // Hier wird der Wert des Selects übernommen
+        api_station_id: document.getElementById('api_station_select').value,
+        regulation: {
+          api_poll_interval: parseInt(document.getElementById('api_poll_interval').value),
+          local_sensor_poll_interval: parseInt(document.getElementById('local_sensor_poll_interval').value),
+          max_on_time: parseInt(document.getElementById('max_on_time').value),
+          off_delay: parseInt(document.getElementById('off_delay').value),
+          off_threshold: parseFloat(document.getElementById('off_threshold').value),
+          on_delay: parseInt(document.getElementById('on_delay').value),
+          on_threshold: parseFloat(document.getElementById('on_threshold').value)
+        },
+        logging: {
+          log_file: document.getElementById('log_file').value
+        },
+        relay_mode: document.getElementById('modeText').textContent
+      };
+
+      fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Konfiguration gespeichert:", data);
+        // Optional: Meldung an den Nutzer anzeigen
+      })
+      .catch(err => console.error("Fehler beim Speichern der Konfiguration:", err));
+    }
+
+    // 7) Konfiguration als JSON herunterladen
+    function downloadConfig() {
+      fetch('/api/config')
+        .then(res => res.json())
+        .then(data => {
+          const jsonString = JSON.stringify(data, null, 2);
+          const blob = new Blob([jsonString], {type: "application/json"});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'config.json';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        })
+        .catch(err => console.error("Fehler beim Download der Config:", err));
+    }
+
+    // 8) Konfiguration per Upload laden
+    function handleUpload() {
+      document.getElementById('uploadConfigInput').click();
+    }
+
+    // Event-Listener für das File-Input
+    document.getElementById('uploadConfigInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const json = JSON.parse(event.target.result);
+          fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(json)
+          })
+          .then(res => res.json())
+          .then(data => {
+            console.log("Konfiguration hochgeladen:", data);
+            loadConfig();
+            loadCurrentMode();
+          })
+          .catch(err => console.error("Fehler beim Upload der Konfiguration:", err));
+        } catch (err) {
+          console.error("Ungültige JSON-Datei:", err);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // 9) Event-Listener für die Buttons
+    document.getElementById('saveConfigButton').addEventListener('click', saveConfig);
+    document.getElementById('downloadConfigButton').addEventListener('click', downloadConfig);
+    document.getElementById('uploadConfigButton').addEventListener('click', handleUpload);
+
+    // Initiale Aufrufe beim Laden
     initModeSwitcher();
     loadCurrentMode();
     loadConfig();
+    loadStations();
   </script>
 </body>
 </html>

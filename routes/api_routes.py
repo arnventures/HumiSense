@@ -9,6 +9,7 @@ api = Blueprint("api", __name__)
 regulation_service = None
 parameter_service = None
 relay_service = None
+station_service = None
 
 # --- Hilfsfunktionen ---
 def get_log_file_path():
@@ -77,6 +78,20 @@ def get_sensor():
         return jsonify(sensor_data)
     else:
         return jsonify({"error": "Regulation service nicht verfügbar"}), 500
+
+@api.route("/api/stations", methods=["GET"])
+def get_stations():
+    try:
+        # Stelle sicher, dass station_service global verfügbar ist.
+        stations = station_service.fetch_stations()
+        # Erstelle eine Liste mit den gewünschten Informationen (z.B. ID und Station-Name)
+        stations_list = [{"id": s.station_id, "station_name": s.name} for s in stations]
+        return jsonify({"stations": stations_list})
+    except Exception as e:
+        return jsonify({"error": "Fehler beim Abrufen der Stationen", "details": str(e)}), 500
+
+
+
 
 @api.route("/api/relay", methods=["GET"])
 def get_relay_state():
