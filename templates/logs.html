@@ -4,121 +4,75 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log Ansicht</title>
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
-  <style>
-    body { margin: 0; font-family: 'Roboto', sans-serif; background-color: #121212; color: #fff; }
-    .container { display: flex; min-height: 100vh; }
-    .sidebar { width: 240px; background-color: #1f1f1f; padding: 20px; box-sizing: border-box; }
-    .sidebar a { display: block; color: #fff; text-decoration: none; margin: 10px 0; padding: 10px; border-radius: 4px; }
-    .sidebar a:hover { background-color: #333; }
-    .main-content { flex: 1; padding: 20px; box-sizing: border-box; }
-    .box { background-color: #1e1e1e; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-    input, button, select { padding: 10px; margin: 8px 0; border: 1px solid #444; border-radius: 4px; background-color: #2a2a2a; color: #fff; box-sizing: border-box; }
-    button { background-color: #007bff; border: none; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 8px 12px; border: 1px solid #444; }
-    th { background-color: #333; }
-    tr:nth-child(even) { background-color: #2a2a2a; }
-    @media (max-width: 768px) {
-      .container { flex-direction: column; }
-      .sidebar { width: 100%; display: flex; justify-content: center; flex-wrap: wrap; }
-      .sidebar a { flex: 1 1 auto; text-align: center; }
-    }
-  </style>
+  <!-- Gemeinsame CSS -->
+  <link rel="stylesheet" href="/static/css/common.css">
 </head>
 <body>
   <div class="container">
+    <!-- Sidebar -->
     <div class="sidebar">
-      <a href="/">Home</a>
-      <a href="/config">Config</a>
-      <a href="/logs">Logs</a>
-    </div>
-    <div class="main-content">
-      <div class="box">
-        <h2>Log Ansicht</h2>
-        <form id="filter-form">
-          <label for="start">Startzeit (Datum und Uhrzeit):</label>
-          <input type="datetime-local" id="start" name="start">
-          <label for="end">Endzeit (Datum und Uhrzeit):</label>
-          <input type="datetime-local" id="end" name="end">
-          <label for="event">Event (optional):</label>
-          <select id="event" name="event">
-            <option value="">Alle</option>
-            <option value="status_update">status_update</option>
-            <option value="relay_turned_on">relay_turned_on</option>
-            <option value="relay_turned_off">relay_turned_off</option>
-            <option value="pending_on_started">pending_on_started</option>
-            <option value="pending_off_started">pending_off_started</option>
-          </select>
-          <button type="submit">Filter anwenden</button>
-        </form>
+      <div>
+        <a href="/">Home</a>
+        <a href="/config">Config</a>
+        <a href="/logs">Logs</a>
       </div>
-      <div class="box">
-        <h3>Log Einträge</h3>
-        <table id="log-table">
-          <thead>
-            <tr>
-              <th>Zeitstempel</th>
-              <th>Event</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Logeinträge werden hier eingefügt -->
-          </tbody>
-        </table>
+      <div>
+        <p style="font-size: 0.8em; text-align: center;">© 2025 HumiSense</p>
+      </div>
+    </div>
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Top Row: Zwei Boxen nebeneinander -->
+      <div class="top-row">
+        <!-- Box 1: Log Ansicht (Filter) -->
+        <div class="box log-filter-box">
+          <h2>Log Ansicht</h2>
+          <form id="filter-form">
+            <label for="start">Startzeit (Datum und Uhrzeit):</label>
+            <input type="datetime-local" id="start" name="start">
+            
+            <label for="end">Endzeit (Datum und Uhrzeit):</label>
+            <input type="datetime-local" id="end" name="end">
+            
+            <label for="event">Event (optional):</label>
+            <select id="event" name="event">
+              <option value="">Alle</option>
+              <option value="status_update">status_update</option>
+              <option value="relay_turned_on">relay_turned_on</option>
+              <option value="relay_turned_off">relay_turned_off</option>
+              <option value="pending_on_started">pending_on_started</option>
+              <option value="pending_off_started">pending_off_started</option>
+            </select>
+            
+            <button type="submit">Filter anwenden</button>
+          </form>
+        </div>
+        <!-- Box 2: Log Einträge -->
+        <div class="box log-entries-box">
+          <h3>Log Einträge</h3>
+          <table id="log-table">
+            <thead>
+              <tr>
+                <th>Zeitstempel</th>
+                <th>Event</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Log entries werden hier eingefügt -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
-  <script>
-    function fetchLogs(params) {
-      // Erstelle URL mit Query-Parametern
-      const url = new URL(window.location.origin + "/api/logs");
-      Object.keys(params).forEach(key => {
-        if (params[key]) {
-          url.searchParams.append(key, params[key]);
-        }
-      });
-      
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          const tbody = document.getElementById("log-table").querySelector("tbody");
-          tbody.innerHTML = "";  // Tabelle leeren
-          data.forEach(entry => {
-            const tr = document.createElement("tr");
-            const date = new Date(entry.timestamp * 1000);
-            const formattedDate = date.toLocaleString();
-            const event = entry.event || "";
-            let details = "";
-            if (entry.message) {
-              details = entry.message;
-            } else if (entry.status) {
-              details = JSON.stringify(entry.status);
-            }
-            tr.innerHTML = `<td>${formattedDate}</td><td>${event}</td><td>${details}</td>`;
-            tbody.appendChild(tr);
-          });
-        })
-        .catch(error => console.error("Fehler beim Laden der Logs:", error));
-    }
-
-    document.getElementById("filter-form").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const start = document.getElementById("start").value;
-      const end = document.getElementById("end").value;
-      const event = document.getElementById("event").value;
-      
-      // Umwandlung in ISO-Format
-      let startISO = start ? new Date(start).toISOString() : "";
-      let endISO = end ? new Date(end).toISOString() : "";
-      
-      fetchLogs({start: startISO, end: endISO, event: event, limit: 100});
-    });
-
-    // Beim Laden der Seite initial Logs abrufen
-    fetchLogs({limit: 100});
-  </script>
+  <!-- Alert container -->
+  <div id="alert-container"></div>
+  <!-- Common JS -->
+  <script src="/static/js/common.js"></script>
+  <!-- Logs page JS -->
+  <script src="/static/js/logs.js"></script>
 </body>
 </html>

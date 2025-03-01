@@ -1,0 +1,249 @@
+/* Global Styles */
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    background-color: #121212;
+    color: #fff;
+  }
+  
+  .container {
+    display: flex;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+    gap: 20px;
+  }
+  
+  .sidebar {
+    flex: 0 0 240px;
+    width: 240px;
+    background-color: #1f1f1f;
+    padding: 20px;
+    box-sizing: border-box;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  
+  .sidebar a {
+    display: block;
+    color: #fff;
+    text-decoration: none;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 4px;
+  }
+  
+  .sidebar a:hover {
+    background-color: #333;
+  }
+  
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  /* Home Page Styles */
+  .top-row {
+    display: flex;
+    gap: 20px;
+  }
+  
+  .top-row > .box {
+    border-radius: 8px;
+    background-color: #1e1e1e;
+    padding: 20px;
+    box-sizing: border-box;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    flex: 1;
+  }
+  
+  .vent-box, .hand-box {
+    text-align: center;
+  }
+  
+  .bottom-row {
+    width: 100%;
+  }
+  
+  .chart-box {
+    width: 100%;
+    border-radius: 8px;
+    background-color: #1e1e1e;
+    padding: 20px;
+    box-sizing: border-box;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  
+  /* Config & Logs Pages (common) */
+  .row {
+    display: flex;
+    gap: 20px;
+  }
+  
+  .row > .box {
+    border-radius: 8px;
+    background-color: #1e1e1e;
+    padding: 20px;
+    box-sizing: border-box;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    flex: 1;
+  }
+  
+  input, button, select {
+    width: 100%;
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #2a2a2a;
+    color: #fff;
+    box-sizing: border-box;
+  }
+  
+  button {
+    cursor: pointer;
+  }
+  
+  label {
+    margin-top: 10px;
+    display: block;
+    font-weight: 500;
+  }
+  
+  /* Logs Page Styles */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th, td {
+    padding: 8px 12px;
+    border: 1px solid #444;
+  }
+  
+  th {
+    background-color: #333;
+  }
+  
+  tr:nth-child(even) {
+    background-color: #2a2a2a;
+  }
+  
+  /* Alert Modal Styles */
+  #alert-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+  }
+  
+  .alert {
+    background-color: #444;
+    color: #fff;
+    padding: 10px 20px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    opacity: 0.9;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  
+  .alert.info {
+    background-color: #007bff;
+  }
+  
+  .alert.success {
+    background-color: #28a745;
+  }
+  
+  .alert.error {
+    background-color: #dc3545;
+  }
+  
+  /* Responsive */
+  @media (max-width:768px) {
+    .container {
+      flex-direction: column;
+    }
+    .top-row {
+      flex-direction: column;
+    }
+    .bottom-row {
+      display: none;
+    }
+    .sidebar {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .sidebar a {
+      flex: 1 1 auto;
+      text-align: center;
+    }
+  }
+
+  /* Der umschließende Container für den Schalter */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;   /* Breite anpassen */
+  height: 34px;  /* Höhe anpassen */
+}
+
+/* Die Checkbox selbst ausblenden */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+
+/* Die Slider-Fläche */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; 
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;  /* Auszustand-Farbe */
+  transition: .4s;
+  border-radius: 34px;     /* Rundung, passend zur Höhe */
+}
+
+/* Der runde Knopf */
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;  /* etwas kleiner als die Höhe der Switch */
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: #fff;  /* Farbe des Knopfs */
+  transition: .4s;
+  border-radius: 50%;
+}
+
+/* Wenn die Checkbox angehakt ist */
+input:checked + .slider {
+  background-color: #66bb6a; /* Farbe im ON-Zustand */
+}
+
+/* Der Knopf wird nach rechts verschoben, wenn eingeschaltet */
+input:checked + .slider:before {
+  transform: translateX(26px); /* Weite anpassen, je nach Switch-Breite */
+}
+
+/* Optional: runde Slider-Enden */
+.slider.round {
+  border-radius: 34px;
+}
+.slider.round:before {
+  border-radius: 50%;
+}
+
+  

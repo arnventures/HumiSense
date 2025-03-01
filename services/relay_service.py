@@ -1,46 +1,30 @@
-import time
-import logging
-import threading
-import lgpio  # Raspberry Pi 5 GPIO-Steuerung
-
-# Logging konfigurieren
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
+import time, logging, threading, lgpio
 
 class RelayService:
-    """
-    Klasse zur Steuerung eines Relais mit LED-Anzeige und verschiedenen Betriebsmodi:
-      - Hand: Manuelle Steuerung (direktes Schalten)
-      - Aus: Relais bleibt immer AUS
-      - Auto: Automatische Steuerung durch den RegulationService
-    """
+    # Standardverzögerungen in Sekunden beim Ein- und Ausschalten
+    ON_DELAY = 2
+    OFF_DELAY = 2
 
-    ON_DELAY = 2  # Standardverzögerung vor dem Einschalten
-    OFF_DELAY = 2  # Standardverzögerung vor dem Ausschalten
-    RELAY_PIN = 17  # Standard-Relais-Pin
-    LED_PIN = 5     # Standard-LED-Pin
+    # GPIO-Pins (Relais / LED)
+    RELAY_PIN = 17
+    LED_PIN = 5
 
     def __init__(self):
-        """
-        Initialisiert das Relais und die LED über die GPIO-Pins.
-        Standardmäßig ist der Modus auf "Auto" gesetzt.
-        """
+        # Standardzustände
         self.relay_pin = RelayService.RELAY_PIN
         self.led_pin = RelayService.LED_PIN
-        self.state = False         # False = Aus, True = Ein
-        self.brand_alarm = False   # Notfall-Modus aktiv?
-        self.mode = "Auto"         # Betriebsmodus: "Hand", "Aus" oder "Auto"
-        self.current_thread = None  # Aktueller Delay-Thread
+        self.state = False       # False = Aus, True = An
+        self.brand_alarm = False # Notfallzustand (Brandalarm)
+        self.mode = "Auto"       # "Hand", "Aus" oder "Auto"
+        self.current_thread = None
 
-        # GPIOs initialisieren
+        # GPIO-Chip öffnen und Pins als Ausgang belegen
         self.chip = lgpio.gpiochip_open(0)
-        lgpio.gpio_claim_output(self.chip, self.relay_pin, 0)  # Relais startet AUS
-        lgpio.gpio_claim_output(self.chip, self.led_pin, 0)      # LED startet AUS
+        lgpio.gpio_claim_output(self.chip, self.relay_pin, 0)
+        lgpio.gpio_claim_output(self.chip, self.led_pin, 0)
 
     def _execute_after_delay(self, action, delay):
-        """
-        Führt eine Aktion (on/off) nach einer Verzögerung aus, sofern diese nicht unterbrochen wird.
-        """
+        """Führt nach einer Verzögerung das Ein- oder Ausschalten aus."""
         time.sleep(delay)
         if action == "on" and not self.brand_alarm:
             self._turn_on()
@@ -48,91 +32,88 @@ class RelayService:
             self._turn_off()
 
     def _turn_on(self):
-        """Schaltet das Relais und die LED sofort ein."""
+        """Interne Methode zum sofortigen Einschalten."""
         lgpio.gpio_write(self.chip, self.relay_pin, 1)
-        lgpio.gpio_write(self.chip, self.led_pin, 1)  # LED an
+        lgpio.gpio_write(self.chip, self.led_pin, 1)
         self.state = True
-        logging.info("✅ Relais wurde eingeschaltet.")
+        logging.info("Relay turned on.")
 
     def _turn_off(self):
-        """Schaltet das Relais und die LED sofort aus."""
+        """Interne Methode zum sofortigen Ausschalten."""
         lgpio.gpio_write(self.chip, self.relay_pin, 0)
-        lgpio.gpio_write(self.chip, self.led_pin, 0)  # LED aus
+        lgpio.gpio_write(self.chip, self.led_pin, 0)
         self.state = False
-        logging.info("✅ Relais wurde ausgeschaltet.")
+        logging.info("Relay turned off.")
 
     def turn_on(self, delay=None, auto=False):
         """
-        Schaltet das Relais ein.
-        Wenn auto==False, ist die manuelle Steuerung nur im Handmodus möglich.
-        :param delay: (Optional) Verzögerung in Sekunden, ansonsten ON_DELAY
-        :param auto: Wenn True, wird die Aktion auch in anderen Modi erlaubt (z. B. im Auto-Modus)
-        :return: Statusmeldung als String
+        Zeitgesteuertes Einschalten.
+        delay: Zeit in Sekunden. Falls None, wird ON_DELAY verwendet.
+        auto: Flag, ob die Aktion aus dem 'Auto'-Modus initiiert wird.
         """
+        # Wenn nicht Auto-Modus und der aktuelle Modus != "Hand", dann blockieren
         if not auto and self.mode != "Hand":
-            return "⚠ Manuelle Steuerung ist nur im Handmodus möglich!"
+            return "Manual control is only allowed in Hand mode!"
+
+        # Wenn ein Brandalarm aktiv ist, bleibt das Relais aus
         if self.brand_alarm:
-            return "🚨 Notfall aktiv! Relais bleibt AUS!"
+            return "Emergency active! Relay remains off!"
+
+        # Wenn das Relais bereits an ist, nichts tun
         if self.state:
-            return "⚠ Relais ist bereits EIN!"
+            return "Relay is already on!"
 
         delay = delay if delay is not None else self.ON_DELAY
-        logging.info(f"⏳ Relais wird in {delay} Sekunden eingeschaltet...")
+        logging.info(f"Relay will turn on in {delay} seconds...")
 
+        # Falls schon ein alter Thread läuft, verwerfen
         if self.current_thread and self.current_thread.is_alive():
             self.current_thread = None
 
+        # Neuer Thread, der nach Ablauf von 'delay' das Relais einschaltet
         self.current_thread = threading.Thread(target=self._execute_after_delay, args=("on", delay))
         self.current_thread.start()
-        return f"✅ Einschaltung geplant (nach {delay} Sekunden)."
+        return f"Relay scheduled to turn on in {delay} seconds."
 
     def turn_off(self, delay=None, auto=False):
         """
-        Schaltet das Relais aus.
-        Wenn auto==False, ist die manuelle Steuerung nur im Handmodus möglich.
-        :param delay: (Optional) Verzögerung in Sekunden, ansonsten OFF_DELAY
-        :param auto: Wenn True, wird die Aktion auch in anderen Modi erlaubt (z. B. im Auto-Modus)
-        :return: Statusmeldung als String
+        Zeitgesteuertes Ausschalten.
+        delay: Zeit in Sekunden. Falls None, wird OFF_DELAY verwendet.
+        auto: Flag, ob die Aktion aus dem 'Auto'-Modus initiiert wird.
         """
         if not auto and self.mode != "Hand":
-            return "⚠ Manuelle Steuerung ist nur im Handmodus möglich!"
+            return "Manual control is only allowed in Hand mode!"
+
         if not self.state:
-            return "⚠ Relais ist bereits AUS!"
+            return "Relay is already off!"
 
         delay = delay if delay is not None else self.OFF_DELAY
-        logging.info(f"⏳ Relais wird in {delay} Sekunden ausgeschaltet...")
+        logging.info(f"Relay will turn off in {delay} seconds...")
 
         if self.current_thread and self.current_thread.is_alive():
             self.current_thread = None
 
         self.current_thread = threading.Thread(target=self._execute_after_delay, args=("off", delay))
         self.current_thread.start()
-        return f"✅ Ausschaltung geplant (nach {delay} Sekunden)."
-
+        return f"Relay scheduled to turn off in {delay} seconds."
 
     def force_off(self):
-        """
-        Schaltet das Relais sofort aus (Notfall, Brandkontakt).
-        """
-        self.brand_alarm = True  # Notfallmodus aktivieren
+        """Sofortiges Ausschalten (Brandalarm)."""
+        self.brand_alarm = True
         if self.current_thread and self.current_thread.is_alive():
             self.current_thread = None
         self._turn_off()
-        return "🚨 Notfall: Relais wurde SOFORT ausgeschaltet!"
+        return "Emergency: Relay turned off immediately!"
 
     def set_mode(self, mode):
-        """
-        Setzt den Betriebsmodus des Relais.
-        Mögliche Modi: "Hand", "Aus", "Auto"
-        :param mode: Gewünschter Modus
-        :return: Der gesetzte Modus
-        """
+        """Setzt den Betriebsmodus ('Hand', 'Aus', 'Auto')."""
         if mode not in ["Hand", "Aus", "Auto"]:
-            raise ValueError("Ungültiger Modus")
+            raise ValueError("Invalid mode")
         self.mode = mode
-        logging.info(f"Modus auf {mode} gesetzt.")
+        logging.info(f"Mode set to {mode}.")
+
+        # Bei Modus "Aus" sofort ausschalten und evtl. Thread stoppen
         if mode == "Aus":
-            # Im "Aus"-Modus soll das Relais stets ausgeschaltet sein
             if self.current_thread and self.current_thread.is_alive():
                 self.current_thread = None
             self._turn_off()
@@ -140,49 +121,13 @@ class RelayService:
 
     def get_state(self):
         """
-        Gibt den aktuellen Zustand und den Modus des Relais zurück.
-        :return: Dict mit "state" (True/False) und "mode"
+        Liefert den aktuellen Zustand des Relais und den aktuellen Modus.
+        state: True/False
+        mode: "Hand", "Aus", "Auto"
         """
         return {"state": self.state, "mode": self.mode}
 
     def cleanup(self):
-        """
-        Schließt die GPIO-Verbindung.
-        """
+        """Schließt den GPIO-Chip und räumt Ressourcen auf."""
         lgpio.gpiochip_close(self.chip)
-        logging.info("GPIOs zurückgesetzt.")
-
-
-if __name__ == "__main__":
-    # Testmodus: Steuerung über die Konsole
-    relay = RelayService()
-    try:
-        while True:
-            print(f"\n🔹 Aktueller Zustand: {'EIN' if relay.get_state()['state'] else 'AUS'}; Modus: {relay.get_state()['mode']}")
-            cmd = input("Befehl (on/off/force_off/set_mode/reset_fire/exit): ").strip().lower()
-            if cmd == "on":
-                delay = float(input("Verzögerung (Sekunden, 0 für sofort): "))
-                print(relay.turn_on(delay))
-            elif cmd == "off":
-                delay = float(input("Verzögerung (Sekunden, 0 für sofort): "))
-                print(relay.turn_off(delay))
-            elif cmd == "force_off":
-                print(relay.force_off())
-            elif cmd == "set_mode":
-                mode = input("Neuer Modus (Hand/Aus/Auto): ").strip()
-                try:
-                    print(relay.set_mode(mode))
-                except Exception as e:
-                    print(f"Fehler: {e}")
-            elif cmd == "reset_fire":
-                # Beispiel: Rücksetzen des Notfallmodus könnte hier implementiert werden
-                relay.brand_alarm = False
-                print("Notfallmodus zurückgesetzt.")
-            elif cmd == "exit":
-                break
-            else:
-                print("Ungültiger Befehl!")
-    except KeyboardInterrupt:
-        print("\nAbbruch durch Benutzer.")
-    finally:
-        relay.cleanup()
+        logging.info("GPIO cleaned up.")
