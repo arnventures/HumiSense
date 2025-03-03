@@ -17,18 +17,20 @@ HumiSense ist eine Flask-basierte Anwendung zur Steuerung eines Relais basierend
 
 ## Installation
 
-### 1. Repository klonen
 ```bash
-git clone <repository-url>
+### 1. Repository klonen
+
+git clone https://github.com/arnventures/HumiSense/
 cd HumiSense
 
-2. Virtuelle Umgebung erstellen und aktivieren
+### 2. Virtuelle Umgebung erstellen und aktivieren
+
 bash
 
 python3 -m venv venv
 source venv/bin/activate
 
-3. Abhängigkeiten installieren
+### 3. Abhängigkeiten installieren
 bash
 
 pip install -r requirements.txt
@@ -43,12 +45,12 @@ lgpio
 python-dateutil
 file-read-backwards
 
-4. Hardware vorbereiten
+### 4. Hardware vorbereiten
 Verbinde den SHT31-Sensor an I2C (Standardadresse: 0x44).
 
 Verbinde das Relais an GPIO 17 und die LED an GPIO 5.
 
-5. Anwendung starten (Entwicklung)
+### 5. Anwendung starten (Entwicklung)
 bash
 
 python3 app.py
