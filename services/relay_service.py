@@ -1,5 +1,9 @@
 
-import os, time, logging, threading, lgpio
+import os, time, logging, threading
+try:
+    import lgpio
+except ImportError:
+    import dummy_lgpio as lgpio
 
 
 os.environ['LGPIO_SOC_BASE'] = '0xFE000000'

@@ -1,25 +1,30 @@
 #!/bin/bash
 
-# Identify the USB WiFi dongle (assumes it's not the onboard WiFi)
-WIFI_DEVICE=$(iw dev | grep -A 1 "Interface" | grep -v "Interface" | awk '{print $1}' | grep -v "wlan0" | head -n 1)
-if [ -z "$WIFI_DEVICE" ]; then
-    echo "No USB WiFi dongle detected. Exiting."
+# Explicitly set the USB WiFi dongle
+WIFI_DEVICE="wlan1"
+if ! iw dev | grep -q "Interface $WIFI_DEVICE"; then
+    echo "No USB WiFi dongle ($WIFI_DEVICE) detected. Available interfaces: $(iw dev | grep "Interface" -A 1 | grep -v "Interface")" > /tmp/hotspot-error.log
     exit 1
 fi
+echo "Using WiFi device: $WIFI_DEVICE" > /tmp/hotspot.log
 
 # Stop any existing hostapd and dnsmasq instances
-systemctl stop hostapd
-systemctl stop dnsmasq
+pkill hostapd
+pkill dnsmasq
+echo "Stopped existing services" >> /tmp/hotspot.log
 
 # Configure the WiFi interface as an access point
 ip link set $WIFI_DEVICE down
+ip addr flush dev $WIFI_DEVICE  # Clear existing IP addresses
 ip addr add 192.168.4.1/24 dev $WIFI_DEVICE
 ip link set $WIFI_DEVICE up
+echo "Configured IP and brought up $WIFI_DEVICE" >> /tmp/hotspot.log
 
 # Configure DHCP and DNS (using dnsmasq)
 echo "interface=$WIFI_DEVICE" > /etc/dnsmasq.conf
 echo "dhcp-range=192.168.4.2,192.168.4.100,12h" >> /etc/dnsmasq.conf
-echo "address=/localhost/192.168.4.1" >> /etc/dnsmasq.conf  # Redirect localhost to AP IP
+echo "address=/localhost/192.168.4.1" >> /etc/dnsmasq.conf
+echo "Configured dnsmasq" >> /tmp/hotspot.log
 
 # Configure hostapd
 cat > /etc/hostapd/hostapd.conf <<EOF
@@ -37,9 +42,14 @@ wpa_key_mgmt=WPA-PSK
 wpa_pairwise=TKIP
 rsn_pairwise=CCMP
 EOF
+echo "Configured hostapd" >> /tmp/hotspot.log
 
 # Start services
-systemctl start dnsmasq
-systemctl start hostapd
+dnsmasq -C /etc/dnsmasq.conf &
+hostapd /etc/hostapd/hostapd.conf &
+echo "Started dnsmasq and hostapd" >> /tmp/hotspot.log
 
 echo "Hotspot 'Humisense' started on $WIFI_DEVICE with password 123456789"
+
+# Keep the container running
+tail -f /dev/null
