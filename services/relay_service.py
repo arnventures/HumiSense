@@ -1,4 +1,12 @@
-import time, logging, threading, lgpio
+
+import os, time, logging, threading
+try:
+    import lgpio
+except ImportError:
+    import dummy_lgpio as lgpio
+
+
+os.environ['LGPIO_SOC_BASE'] = '0xFE000000'
 
 class RelayService:
     # Standardverzögerungen in Sekunden beim Ein- und Ausschalten
@@ -128,6 +136,6 @@ class RelayService:
         return {"state": self.state, "mode": self.mode}
 
     def cleanup(self):
-        """Schließt den GPIO-Chip und räumt Ressourcen auf."""
+        """Schliesst den GPIO-Chip und räumt Ressourcen auf."""
         lgpio.gpiochip_close(self.chip)
         logging.info("GPIO cleaned up.")

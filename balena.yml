@@ -1,0 +1,26 @@
+name: HumiSense
+type: sw.application
+joinable: false
+description: >
+  HumiPy is a custom Python application running on BalenaCloud.
+  It uses a relay service to control hardware using lgpio.
+post-provisioning: >
+  ## Usage Instructions
+  Once the device downloads the app, the welcome page should be accessible via its public URL.
+assets:
+  repository:
+    type: blob.asset
+    data:
+      url: 'hhttps://github.com/arnventures/humisense'
+  logo:
+    type: blob.asset
+    data:
+      url: 'https://inosent.ch/wp-content/uploads/2021/06/inosent_logo.png'
+data:
+  supportedDeviceTypes:
+    - generic-x86-64-ext
+    - generic-aarch64
+    - fincm3
+    - beaglebone-black
+    - jetson-tx2
+version: 2.0.5

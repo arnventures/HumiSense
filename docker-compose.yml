@@ -1,0 +1,17 @@
+version: '2'
+services:
+  humipy:
+    build: .
+    ports:
+      - "80:5000"
+      - "5000:5000"
+    labels:
+      - "io.balena.local.image=1"
+      - "io.balena.local.service=humipy"
+  hotspot-service:
+    privileged: true  # Required to configure network
+    build: ./hotspot
+    network_mode: host
+    labels:
+      - "io.balena.local.image=1"
+      - "io.balena.local.service=hotspot"
