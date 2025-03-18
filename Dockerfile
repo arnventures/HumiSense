@@ -35,8 +35,8 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /usr/local/lib /usr/local/lib
 COPY --from=builder /usr/local/include /usr/local/include
 
-# Update the dynamic linker run-time bindings to find liblgpio.so.1
-RUN ldconfig
+# Update the dynamic linker run-time bindings and verify library
+RUN ldconfig && ls /usr/local/lib/liblgpio.so.1
 
 # Set the working directory for the app
 WORKDIR /usr/src/app

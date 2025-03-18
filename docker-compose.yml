@@ -3,15 +3,20 @@ services:
   humipy:
     build: .
     ports:
-      - "80:5000"
-      - "5000:5000"
+      - "5000:5000"                    # Simplified to just 5000
+    devices:
+      - "/dev/gpiochip0:/dev/gpiochip0" # GPIO access
+      - "/dev/i2c-1:/dev/i2c-1"        # I2C access
+    privileged: true                   # Full hardware access
+    restart: always                    # Auto-restart on failure
     labels:
       - "io.balena.local.image=1"
       - "io.balena.local.service=humipy"
   hotspot-service:
-    privileged: true  # Required to configure network
     build: ./hotspot
     network_mode: host
+    privileged: true                   # For network config
+    restart: always                    # Auto-restart on failure
     labels:
       - "io.balena.local.image=1"
       - "io.balena.local.service=hotspot"
