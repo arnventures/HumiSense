@@ -19,8 +19,11 @@ CORS(app)
 parameter_service = ParameterService("config.json")
 logging_service = LoggingService(Config.INITIAL_LOG_FILE)
 station_service = StationService(logging_service, Config)
-sensor = SHT31Sensor()
+# Test lgpio with RelayService
+print("Initializing RelayService to test lgpio...")
 relay_service = RelayService()
+print("RelayService initialized successfully! lgpio is working.")
+sensor = SHT31Sensor()
 regulation_service = RegulationService(sensor, station_service, parameter_service, logging_service, relay_service)
 log_reader_service = LogReaderService(parameter_service)
 
