@@ -38,6 +38,15 @@ app.config["REGULATION_SERVICE"] = regulation_service
 app.config["RELAY_SERVICE"] = relay_service
 app.config["LOG_READER_SERVICE"] = log_reader_service
 
+
+import time
+
+# Test: Relais für 5 Sekunden einschalten, dann ausschalten
+relay_service.turn_on(delay=0, auto=True)  # Sofort einschalten
+time.sleep(5)
+relay_service.turn_off(delay=0, auto=True)  # Nach 5 Sekunden ausschalten
+
+
 # Register blueprints:
 # The views blueprint serves HTML templates at root URLs.
 app.register_blueprint(views_bp);
