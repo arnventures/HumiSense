@@ -5,7 +5,11 @@ services:
     ports:
       - "5000:5000"                    # Simplified to just 5000
     devices:
-      - "/dev/gpiochip0:/dev/gpiochip0" # GPIO access
+      - "/dev/gpiochip0:/dev/gpiochip0" # GPIO access for chip 0
+      - "/dev/gpiochip1:/dev/gpiochip1" # GPIO access for chip 1
+      - "/dev/gpiochip2:/dev/gpiochip2" # GPIO access for chip 2
+      - "/dev/gpiochip3:/dev/gpiochip3" # GPIO access for chip 3
+      - "/dev/gpiochip4:/dev/gpiochip4" # GPIO access for chip 4
       - "/dev/i2c-1:/dev/i2c-1"        # I2C access
     privileged: true                   # Full hardware access
     restart: always                    # Auto-restart on failure

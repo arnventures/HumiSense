@@ -2,7 +2,7 @@
 import os, time, logging, threading, lgpio
 
 
-os.environ['LGPIO_SOC_BASE'] = '0xFE000000'
+#os.environ['LGPIO_SOC_BASE'] = '0xFE000000'
 
 class RelayService:
     # Standardverzögerungen in Sekunden beim Ein- und Ausschalten
