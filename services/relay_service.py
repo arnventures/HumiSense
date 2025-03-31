@@ -14,6 +14,14 @@ class RelayService:
     LED_PIN = 5
 
     def __init__(self):
+        try:
+            # Use the full path to the GPIO chip
+            self.chip = gpiod.Chip("/dev/gpiochip0")
+            logger.info("Successfully opened GPIO chip /dev/gpiochip0")
+        except Exception as e:
+            logger.error(f"Failed to open GPIO chip: {str(e)}")
+            self.chip = None
+            logger.error("GPIO chip could not be opened. RelayService will run without GPIO access.")
         self.relay_pin = self.RELAY_PIN
         self.led_pin = self.LED_PIN
         self.state = False
