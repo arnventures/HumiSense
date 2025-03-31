@@ -1,7 +1,7 @@
 import time
 import logging
 import threading
-import gpiod
+import lgpio
 import os
 
 # Configure logging
