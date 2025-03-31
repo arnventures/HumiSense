@@ -2,9 +2,11 @@ import time
 import logging
 import threading
 import gpiod
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class RelayService:
     # Standard delays in seconds for turning on/off
@@ -23,26 +25,52 @@ class RelayService:
         self.brand_alarm = False  # Emergency state (fire alarm)
         self.mode = "Auto"  # "Hand", "Aus", or "Auto"
         self.current_thread = None
+        self.chip = None
+        self.relay_line = None
+        self.led_line = None
 
-        # Open the GPIO chip (on Raspberry Pi 5, user-facing GPIOs are on gpiochip0 after kernel update)
-        logging.info("Opening GPIO chip...")
-        self.chip = gpiod.Chip("gpiochip0")
-        logging.info("GPIO chip opened successfully.")
+        # List available GPIO devices for debugging
+        gpio_devices = [f for f in os.listdir("/dev") if f.startswith("gpiochip")]
+        logger.info(f"Available GPIO devices: {gpio_devices}")
 
-        # Configure the relay and LED pins as outputs
-        logging.info("Configuring GPIO %d as output for relay...", self.relay_pin)
-        self.relay_line = self.chip.get_line(self.relay_pin)
-        self.relay_line.request(consumer="relay_service", type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
-        logging.info("Configuring GPIO %d as output for LED...", self.led_pin)
-        self.led_line = self.chip.get_line(self.led_pin)
-        self.led_line.request(consumer="relay_service", type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
-        logging.info("GPIO pins configured successfully.")
+        # Try opening GPIO chips from gpiochip0 to gpiochip4
+        for chip_name in ["gpiochip0", "gpiochip1", "gpiochip2", "gpiochip3", "gpiochip4"]:
+            device_path = f"/dev/{chip_name}"
+            logger.info(f"Attempting to open {device_path}...")
+            try:
+                self.chip = gpiod.Chip(chip_name)
+                logger.info(f"Successfully opened {chip_name}")
+                break
+            except FileNotFoundError:
+                logger.warning(f"Failed to open {chip_name}: No such file or directory")
+            except Exception as e:
+                logger.warning(f"Failed to open {chip_name}: {str(e)}")
+
+        if self.chip is None:
+            logger.error("No GPIO chips could be opened. RelayService will run without GPIO access.")
+        else:
+            # Configure the relay and LED pins as outputs
+            try:
+                logger.info("Configuring GPIO %d as output for relay...", self.relay_pin)
+                self.relay_line = self.chip.get_line(self.relay_pin)
+                self.relay_line.request(consumer="relay", type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
+                logger.info("Configuring GPIO %d as output for LED...", self.led_pin)
+                self.led_line = self.chip.get_line(self.led_pin)
+                self.led_line.request(consumer="led", type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
+                logger.info("GPIO pins configured successfully.")
+            except Exception as e:
+                logger.error(f"Failed to configure GPIO lines: {str(e)}")
+                self.chip.close()
+                self.chip = None
 
     def _execute_after_delay(self, action, delay):
         """Executes the on/off action after a delay."""
-        logging.info("Starting delay of %d seconds for action: %s", delay, action)
+        if self.chip is None:
+            logger.warning("GPIO not available. Cannot execute action: %s", action)
+            return
+        logger.info("Starting delay of %d seconds for action: %s", delay, action)
         time.sleep(delay)
-        logging.info("Delay finished, executing action: %s", action)
+        logger.info("Delay finished, executing action: %s", action)
         if action == "on" and not self.brand_alarm:
             self._turn_on()
         elif action == "off":
@@ -50,21 +78,27 @@ class RelayService:
 
     def _turn_on(self):
         """Internal method to turn on immediately."""
-        logging.info("Turning relay ON at GPIO %d", self.relay_pin)
-        self.relay_line.set_value(1)
-        logging.info("Turning LED ON at GPIO %d", self.led_pin)
-        self.led_line.set_value(1)
-        self.state = True
-        logging.info("Relay turned on, state: %s", self.state)
+        if self.relay_line and self.led_line:
+            logger.info("Turning relay ON at GPIO %d", self.relay_pin)
+            self.relay_line.set_value(1)
+            logger.info("Turning LED ON at GPIO %d", self.led_pin)
+            self.led_line.set_value(1)
+            self.state = True
+            logger.info("Relay turned on, state: %s", self.state)
+        else:
+            logger.warning("GPIO lines not configured. Cannot turn on relay.")
 
     def _turn_off(self):
         """Internal method to turn off immediately."""
-        logging.info("Turning relay OFF at GPIO %d", self.relay_pin)
-        self.relay_line.set_value(0)
-        logging.info("Turning LED OFF at GPIO %d", self.led_pin)
-        self.led_line.set_value(0)
-        self.state = False
-        logging.info("Relay turned off, state: %s", self.state)
+        if self.relay_line and self.led_line:
+            logger.info("Turning relay OFF at GPIO %d", self.relay_pin)
+            self.relay_line.set_value(0)
+            logger.info("Turning LED OFF at GPIO %d", self.led_pin)
+            self.led_line.set_value(0)
+            self.state = False
+            logger.info("Relay turned off, state: %s", self.state)
+        else:
+            logger.warning("GPIO lines not configured. Cannot turn off relay.")
 
     def turn_on(self, delay=None, auto=False):
         """
@@ -72,18 +106,21 @@ class RelayService:
         delay: Time in seconds. If None, ON_DELAY is used.
         auto: Flag indicating if the action is initiated from 'Auto' mode.
         """
-        logging.info("turn_on called with delay=%s, auto=%s", delay, auto)
+        if self.chip is None:
+            logger.warning("GPIO not available. Cannot turn on relay.")
+            return "GPIO not available!"
+        logger.info("turn_on called with delay=%s, auto=%s", delay, auto)
         if not auto and self.mode != "Hand":
-            logging.warning("Manual control blocked: Not in Hand mode")
+            logger.warning("Manual control blocked: Not in Hand mode")
             return "Manual control is only allowed in Hand mode!"
         if self.brand_alarm:
-            logging.warning("Emergency active: Relay remains off")
+            logger.warning("Emergency active: Relay remains off")
             return "Emergency active! Relay remains off!"
         if self.state:
-            logging.info("Relay is already on")
+            logger.info("Relay is already on")
             return "Relay is already on!"
         delay = delay if delay is not None else self.ON_DELAY
-        logging.info("Relay will turn on in %d seconds...", delay)
+        logger.info("Relay will turn on in %d seconds...", delay)
         if self.current_thread and self.current_thread.is_alive():
             self.current_thread = None
         self.current_thread = threading.Thread(target=self._execute_after_delay, args=("on", delay))
@@ -96,15 +133,18 @@ class RelayService:
         delay: Time in seconds. If None, OFF_DELAY is used.
         auto: Flag indicating if the action is initiated from 'Auto' mode.
         """
-        logging.info("turn_off called with delay=%s, auto=%s", delay, auto)
+        if self.chip is None:
+            logger.warning("GPIO not available. Cannot turn off relay.")
+            return "GPIO not available!"
+        logger.info("turn_off called with delay=%s, auto=%s", delay, auto)
         if not auto and self.mode != "Hand":
-            logging.warning("Manual control blocked: Not in Hand mode")
+            logger.warning("Manual control blocked: Not in Hand mode")
             return "Manual control is only allowed in Hand mode!"
         if not self.state:
-            logging.info("Relay is already off")
+            logger.info("Relay is already off")
             return "Relay is already off!"
         delay = delay if delay is not None else self.OFF_DELAY
-        logging.info("Relay will turn off in %d seconds...", delay)
+        logger.info("Relay will turn off in %d seconds...", delay)
         if self.current_thread and self.current_thread.is_alive():
             self.current_thread = None
         self.current_thread = threading.Thread(target=self._execute_after_delay, args=("off", delay))
@@ -113,7 +153,10 @@ class RelayService:
 
     def force_off(self):
         """Immediate turn-off (emergency)."""
-        logging.info("Forcing relay off due to emergency")
+        if self.chip is None:
+            logger.warning("GPIO not available. Cannot force off relay.")
+            return "GPIO not available!"
+        logger.info("Forcing relay off due to emergency")
         self.brand_alarm = True
         if self.current_thread and self.current_thread.is_alive():
             self.current_thread = None
@@ -122,14 +165,18 @@ class RelayService:
 
     def set_mode(self, mode):
         """Sets the operating mode ('Hand', 'Aus', 'Auto')."""
-        logging.info("Setting mode to %s", mode)
         if mode not in ["Hand", "Aus", "Auto"]:
             raise ValueError("Invalid mode")
         self.mode = mode
-        if mode == "Aus":
+        logger.info(f"Mode set to {mode}.")
+        if mode == "Aus" and self.chip is not None:
             if self.current_thread and self.current_thread.is_alive():
                 self.current_thread = None
             self._turn_off()
+        # Restore LED behavior: turn on LED in Hand mode
+        if mode == "Hand" and self.chip is not None:
+            logger.info("Turning on LED for Hand mode...")
+            self.led_line.set_value(1)
         return self.mode
 
     def get_state(self):
@@ -142,8 +189,9 @@ class RelayService:
 
     def cleanup(self):
         """Closes the GPIO chip and releases resources."""
-        logging.info("Cleaning up GPIO...")
-        self.relay_line.release()
-        self.led_line.release()
-        self.chip.close()
-        logging.info("GPIO cleaned up.")
+        if self.chip:
+            logger.info("Releasing GPIO lines...")
+            self.relay_line.release()
+            self.led_line.release()
+            self.chip.close()
+            logger.info("GPIO lines released.")
