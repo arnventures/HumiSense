@@ -3,6 +3,7 @@ FROM balenalib/raspberrypi5-debian-python:3.10-run
 
 # Install runtime dependencies, including libgpiod and its tools
 RUN apt-get update && apt-get install -y \
+    lgpio\
     libgpiod2 \
     libgpiod-dev \
     python3-libgpiod

@@ -22,40 +22,30 @@ class RelayService:
         self.mode = "Auto"
         self.current_thread = None
         self.chip = None
-        self.relay_line = None
-        self.led_line = None
 
-        # List available GPIO devices
+        # List available GPIO devices for debugging
         gpio_devices = [f for f in os.listdir("/dev") if f.startswith("gpiochip")]
         logger.info(f"Available GPIO devices: {gpio_devices}")
 
-        # Try opening GPIO chips with full path
-        for chip_name in ["gpiochip0", "gpiochip1", "gpiochip2", "gpiochip3", "gpiochip4"]:
-            device_path = f"/dev/{chip_name}"
-            logger.info(f"Attempting to open {device_path}...")
-            try:
-                self.chip = gpiod.Chip(device_path)
-                logger.info(f"Successfully opened {device_path}")
-                break
-            except FileNotFoundError:
-                logger.warning(f"Failed to open {device_path}: No such file or directory")
-            except Exception as e:
-                logger.warning(f"Failed to open {device_path}: {str(e)}")
+        # Open the GPIO chip (chip 0 corresponds to /dev/gpiochip0)
+        try:
+            self.chip = lgpio.gpiochip_open(0)  # Open chip 0
+            logger.info("Successfully opened GPIO chip 0")
+        except Exception as e:
+            logger.error(f"Failed to open GPIO chip: {str(e)}")
+            self.chip = None
 
         if self.chip is None:
-            logger.error("No GPIO chips could be opened. RelayService will run without GPIO access.")
+            logger.error("GPIO chip could not be opened. RelayService will run without GPIO access.")
         else:
             try:
-                logger.info("Configuring GPIO %d as output for relay...", self.relay_pin)
-                self.relay_line = self.chip.get_line(self.relay_pin)
-                self.relay_line.request(consumer="relay", type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
-                logger.info("Configuring GPIO %d as output for LED...", self.led_pin)
-                self.led_line = self.chip.get_line(self.led_pin)
-                self.led_line.request(consumer="led", type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
+                # Claim relay and LED pins as outputs with initial value 0 (LOW)
+                lgpio.gpio_claim_output(self.chip, self.relay_pin, 0)
+                lgpio.gpio_claim_output(self.chip, self.led_pin, 0)
                 logger.info("GPIO pins configured successfully.")
             except Exception as e:
-                logger.error(f"Failed to configure GPIO lines: {str(e)}")
-                self.chip.close()
+                logger.error(f"Failed to claim GPIO pins: {str(e)}")
+                lgpio.gpiochip_close(self.chip)
                 self.chip = None
 
     def _execute_after_delay(self, action, delay):
@@ -73,27 +63,27 @@ class RelayService:
 
     def _turn_on(self):
         """Internal method to turn on immediately."""
-        if self.relay_line and self.led_line:
+        if self.chip is not None:
             logger.info("Turning relay ON at GPIO %d", self.relay_pin)
-            self.relay_line.set_value(1)
+            lgpio.gpio_write(self.chip, self.relay_pin, 1)
             logger.info("Turning LED ON at GPIO %d", self.led_pin)
-            self.led_line.set_value(1)
+            lgpio.gpio_write(self.chip, self.led_pin, 1)
             self.state = True
             logger.info("Relay turned on, state: %s", self.state)
         else:
-            logger.warning("GPIO lines not configured. Cannot turn on relay.")
+            logger.warning("GPIO not available. Cannot turn on relay.")
 
     def _turn_off(self):
         """Internal method to turn off immediately."""
-        if self.relay_line and self.led_line:
+        if self.chip is not None:
             logger.info("Turning relay OFF at GPIO %d", self.relay_pin)
-            self.relay_line.set_value(0)
+            lgpio.gpio_write(self.chip, self.relay_pin, 0)
             logger.info("Turning LED OFF at GPIO %d", self.led_pin)
-            self.led_line.set_value(0)
+            lgpio.gpio_write(self.chip, self.led_pin, 0)
             self.state = False
             logger.info("Relay turned off, state: %s", self.state)
         else:
-            logger.warning("GPIO lines not configured. Cannot turn off relay.")
+            logger.warning("GPIO not available. Cannot turn off relay.")
 
     def turn_on(self, delay=None, auto=False):
         """
@@ -171,7 +161,7 @@ class RelayService:
         # Restore LED behavior: turn on LED in Hand mode
         if mode == "Hand" and self.chip is not None:
             logger.info("Turning on LED for Hand mode...")
-            self.led_line.set_value(1)
+            lgpio.gpio_write(self.chip, self.led_pin, 1)
         return self.mode
 
     def get_state(self):
@@ -184,9 +174,7 @@ class RelayService:
 
     def cleanup(self):
         """Closes the GPIO chip and releases resources."""
-        if self.chip:
+        if self.chip is not None:
             logger.info("Releasing GPIO lines...")
-            self.relay_line.release()
-            self.led_line.release()
-            self.chip.close()
+            lgpio.gpiochip_close(self.chip)
             logger.info("GPIO lines released.")
