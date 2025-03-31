@@ -9,47 +9,42 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class RelayService:
-    # Standard delays in seconds for turning on/off
     ON_DELAY = 1
     OFF_DELAY = 1
-
-    # GPIO Pins (Relay / LED)
     RELAY_PIN = 22
     LED_PIN = 5
 
     def __init__(self):
-        # Standard states
-        self.relay_pin = RelayService.RELAY_PIN
-        self.led_pin = RelayService.LED_PIN
-        self.state = False  # False = Off, True = On
-        self.brand_alarm = False  # Emergency state (fire alarm)
-        self.mode = "Auto"  # "Hand", "Aus", or "Auto"
+        self.relay_pin = self.RELAY_PIN
+        self.led_pin = self.LED_PIN
+        self.state = False
+        self.brand_alarm = False
+        self.mode = "Auto"
         self.current_thread = None
         self.chip = None
         self.relay_line = None
         self.led_line = None
 
-        # List available GPIO devices for debugging
+        # List available GPIO devices
         gpio_devices = [f for f in os.listdir("/dev") if f.startswith("gpiochip")]
         logger.info(f"Available GPIO devices: {gpio_devices}")
 
-        # Try opening GPIO chips from gpiochip0 to gpiochip4
+        # Try opening GPIO chips with full path
         for chip_name in ["gpiochip0", "gpiochip1", "gpiochip2", "gpiochip3", "gpiochip4"]:
             device_path = f"/dev/{chip_name}"
             logger.info(f"Attempting to open {device_path}...")
             try:
-                self.chip = gpiod.Chip(chip_name)
-                logger.info(f"Successfully opened {chip_name}")
+                self.chip = gpiod.Chip(device_path)
+                logger.info(f"Successfully opened {device_path}")
                 break
             except FileNotFoundError:
-                logger.warning(f"Failed to open {chip_name}: No such file or directory")
+                logger.warning(f"Failed to open {device_path}: No such file or directory")
             except Exception as e:
-                logger.warning(f"Failed to open {chip_name}: {str(e)}")
+                logger.warning(f"Failed to open {device_path}: {str(e)}")
 
         if self.chip is None:
             logger.error("No GPIO chips could be opened. RelayService will run without GPIO access.")
         else:
-            # Configure the relay and LED pins as outputs
             try:
                 logger.info("Configuring GPIO %d as output for relay...", self.relay_pin)
                 self.relay_line = self.chip.get_line(self.relay_pin)
