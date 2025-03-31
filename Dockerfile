@@ -1,10 +1,11 @@
 # Use Balena's Python runtime image for Raspberry Pi 5 (64-bit)
 FROM balenalib/raspberrypi5-debian-python:3.10-run
 
-# Install runtime dependencies, including libgpiod and swig
+# Install runtime dependencies, including libgpiod, swig, and build-essential
 RUN apt-get update && apt-get install -y \
     libgpiod2 \
-    swig
+    swig \
+    build-essential
 
 # Set the working directory for the app
 WORKDIR /usr/src/app
