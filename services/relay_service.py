@@ -31,8 +31,8 @@ class RelayService:
 
         # Open the GPIO chip using the full path
         try:
-            self.chip = gpiod.Chip("/dev/gpiochip0")
-            logger.info("Successfully opened GPIO chip /dev/gpiochip0")
+            self.chip = gpiod.Chip("/dev/gpiochip10")
+            logger.info("Successfully opened GPIO chip /dev/gpiochip10")
         except Exception as e:
             logger.error(f"Failed to open GPIO chip: {str(e)}")
             self.chip = None
