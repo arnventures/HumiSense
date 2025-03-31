@@ -6,11 +6,11 @@ import os, time, logging, threading, lgpio
 
 class RelayService:
     # Standardverzögerungen in Sekunden beim Ein- und Ausschalten
-    ON_DELAY = 2
-    OFF_DELAY = 2
+    ON_DELAY = 1
+    OFF_DELAY = 1
 
     # GPIO-Pins (Relais / LED)
-    RELAY_PIN = 17
+    RELAY_PIN = 22
     LED_PIN = 5
 
     def __init__(self):
