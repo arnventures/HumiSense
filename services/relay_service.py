@@ -64,11 +64,11 @@ class RelayService:
 
 
                 # Configure relay pin as output with initial value 0
-                self.relay_line = self.chip.get_line(self.relay_pin)
-                self.relay_line.request(consumer='relay', type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
+                #self.relay_line = self.chip.get_line(self.relay_pin)
+                #self.relay_line.request(consumer='relay', type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
                 # Configure LED pin as output with initial value 0
-                self.led_line = self.chip.get_line(self.led_pin)
-                self.led_line.request(consumer='led', type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
+                #self.led_line = self.chip.get_line(self.led_pin)
+                #self.led_line.request(consumer='led', type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
                 logger.info("GPIO pins configured successfully.")
             except Exception as e:
                 logger.error(f"Failed to claim GPIO pins: {str(e)}")
