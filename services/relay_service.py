@@ -200,3 +200,6 @@ class RelayService:
                 self.led_line.release()
             self.chip.close()
             logger.info("GPIO lines released.")
+
+    def __del__(self):
+        self.lines.release()
