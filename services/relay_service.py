@@ -23,8 +23,8 @@ class RelayService:
         self.mode = "Auto"
         self.current_thread = None
         self.chip = None
-        self.relay_line = None
-        self.led_line = None
+        self.relay_line = 17
+        self.led_line = 6
 
         # List available GPIO devices for debugging
         available_gpio_devices = [f for f in os.listdir("/dev") if f.startswith("gpiochip")]
