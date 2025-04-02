@@ -2,6 +2,7 @@ import time
 import logging
 import threading
 import gpiod
+from gpiod.line import Direction, Value
 import os
 
 # Configure logging
@@ -40,6 +41,20 @@ class RelayService:
 
         if self.chip is not None:
             try:
+        
+                with gpiod.request_lines(
+                    "/dev/gpiochip10",
+                    consumer="blink-example",
+                    
+                ) as request:
+                    while True:
+                        request.set_value(self.RELAY_PIN, Value.ACTIVE)
+                        time.sleep(1)
+                        request.set_value(self.RELAY_PIN, Value.INACTIVE)
+                        time.sleep(1)        # Configure relay pin and LED pin
+
+
+
                 # Configure relay pin as output with initial value 0
                 self.relay_line = self.chip.get_line(self.relay_pin)
                 self.relay_line.request(consumer='relay', type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
