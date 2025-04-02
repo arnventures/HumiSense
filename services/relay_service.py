@@ -40,6 +40,7 @@ class RelayService:
             logger.error("GPIO chip could not be opened. RelayService will run without GPIO access.")
 
         if self.chip is not None:
+            counter = 0
             try:
         
                 with gpiod.request_lines(
@@ -51,11 +52,14 @@ class RelayService:
         )
     },
                 ) as request:
-                    while True:
+                    
+                    while counter < 5:
                         request.set_value(self.RELAY_PIN, Value.ACTIVE)
                         time.sleep(1)
                         request.set_value(self.RELAY_PIN, Value.INACTIVE)
-                        time.sleep(1)        # Configure relay pin and LED pin
+                        time.sleep(1)
+                        counter = counter + 1
+                            # Configure relay pin and LED pin
 
 
 
