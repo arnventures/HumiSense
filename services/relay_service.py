@@ -25,6 +25,16 @@ class RelayService:
         self.chip = None
         self.relay_line = 17
         self.led_line = 6
+        self.lines = gpiod.request_lines(
+                    "/dev/gpiochip0",
+                    consumer="blink-example",
+                    config={
+                        self.RELAY_PIN: gpiod.LineSettings(direction=Direction.OUTPUT, output_value=Value.INACTIVE),
+                        self.LED_PIN: gpiod.LineSettings(direction=Direction.OUTPUT, output_value=Value.INACTIVE),
+                        self.relay_line: gpiod.LineSettings(direction=Direction.OUTPUT, output_value=Value.INACTIVE),
+                        self.led_line: gpiod.LineSettings(direction=Direction.OUTPUT, output_value=Value.INACTIVE)
+    },
+                ) 
 
         # List available GPIO devices for debugging
         available_gpio_devices = [f for f in os.listdir("/dev") if f.startswith("gpiochip")]
@@ -40,35 +50,14 @@ class RelayService:
             logger.error("GPIO chip could not be opened. RelayService will run without GPIO access.")
 
         if self.chip is not None:
-            counter = 0
             try:
-        
-                with gpiod.request_lines(
-                    "/dev/gpiochip10",
-                    consumer="blink-example",
-                    config={
-                        self.RELAY_PIN: gpiod.LineSettings(
-                        direction=Direction.OUTPUT, output_value=Value.ACTIVE
-        )
-    },
-                ) as request:
-                    
-                    while counter < 5:
-                        request.set_value(self.RELAY_PIN, Value.ACTIVE)
-                        time.sleep(1)
-                        request.set_value(self.RELAY_PIN, Value.INACTIVE)
-                        time.sleep(1)
-                        counter = counter + 1
-                            # Configure relay pin and LED pin
-
-
 
                 # Configure relay pin as output with initial value 0
-                #self.relay_line = self.chip.get_line(self.relay_pin)
-                #self.relay_line.request(consumer='relay', type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
+                self.relay_line = self.chip.get_line(self.relay_pin)
+                self.relay_line.request(consumer='relay', type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
                 # Configure LED pin as output with initial value 0
-                #self.led_line = self.chip.get_line(self.led_pin)
-                #self.led_line.request(consumer='led', type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
+                self.led_line = self.chip.get_line(self.led_pin)
+                self.led_line.request(consumer='led', type=gpiod.LINE_REQ_DIR_OUT, default_val=0)
                 logger.info("GPIO pins configured successfully.")
             except Exception as e:
                 logger.error(f"Failed to claim GPIO pins: {str(e)}")
@@ -92,9 +81,10 @@ class RelayService:
         """Internal method to turn on immediately."""
         if self.relay_line and self.led_line:
             logger.info("Turning relay ON at GPIO %d", self.relay_pin)
-            self.relay_line.set_value(1)
+            self.lines.set_value(self.RELAY_PIN, Value.ACTIVE)
+            self.lines.set_value(self.relay_line, Value.ACTIVE)
             logger.info("Turning LED ON at GPIO %d", self.led_pin)
-            self.led_line.set_value(1)
+            self.lines.set_value(self.led_pin, Value.ACTIVE)
             self.state = True
             logger.info("Relay turned on, state: %s", self.state)
         else:
@@ -104,9 +94,10 @@ class RelayService:
         """Internal method to turn off immediately."""
         if self.relay_line and self.led_line:
             logger.info("Turning relay OFF at GPIO %d", self.relay_pin)
-            self.relay_line.set_value(0)
+            self.lines.set_value(self.RELAY_PIN, Value.INACTIVE)
+            self.lines.set_value(self.relay_line, Value.INACTIVE)
             logger.info("Turning LED OFF at GPIO %d", self.led_pin)
-            self.led_line.set_value(0)
+            self.lines.set_value(self.led_pin, Value.INACTIVE)
             self.state = False
             logger.info("Relay turned off, state: %s", self.state)
         else:
