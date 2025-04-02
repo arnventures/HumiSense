@@ -49,6 +49,9 @@ class RelayService:
             self.chip = None
             logger.error("GPIO chip could not be opened. RelayService will run without GPIO access.")
 
+
+
+        '''
         if self.chip is not None:
             try:
 
@@ -62,7 +65,8 @@ class RelayService:
             except Exception as e:
                 logger.error(f"Failed to claim GPIO pins: {str(e)}")
                 self.chip.close()
-                self.chip = None
+                self.chip = None'
+        '''
 
     def _execute_after_delay(self, action, delay):
         """Executes the on/off action after a delay."""
