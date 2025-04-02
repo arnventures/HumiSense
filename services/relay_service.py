@@ -45,7 +45,11 @@ class RelayService:
                 with gpiod.request_lines(
                     "/dev/gpiochip10",
                     consumer="blink-example",
-                    
+                    config={
+                        self.RELAY_PIN: gpiod.LineSettings(
+                        direction=Direction.OUTPUT, output_value=Value.ACTIVE
+        )
+    },
                 ) as request:
                     while True:
                         request.set_value(self.RELAY_PIN, Value.ACTIVE)
