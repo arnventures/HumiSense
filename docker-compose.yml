@@ -4,6 +4,8 @@ services:
     build: .
     ports:
       - "5000:5000"
+      - "80:80"
+      - "8080:8080"
     privileged: true
     devices:
       - "/dev/gpiochip0:/dev/gpiochip0"
