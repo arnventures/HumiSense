@@ -4,7 +4,7 @@ from gpiod.line import Direction, Value
 
 class IndicatorService:
     # Define the GPIO pins
-    RUN_LED_PIN = 18    #green LED “system running”
+    RUN_LED_PIN = 6    #green LED “system running”
     FAULT_LED_PIN = 23  # red LED  “fault condition”
 
     def __init__(self):
