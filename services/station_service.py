@@ -9,6 +9,8 @@ class StationService:
         self.config = config
         self.cached_stations = []
         self.last_fetch_time = 0
+        # Added fault indicator service; set via set_indicator_service() if needed.
+        self.indicator_service = None
 
     def fetch_stations(self):
         """
@@ -23,8 +25,14 @@ class StationService:
         # Frische Daten von zwei APIs holen (Luftfeuchte / Temperatur)
         humidity_data = self._fetch_data(self.config.HUMIDITY_URL)
         temperature_data = self._fetch_data(self.config.TEMPERATURE_URL)
-        if not humidity_data or not temperature_data:
-            # Falls ein API-Fehler auftritt, gib vorhandene Cachdaten zurueck (kann leer sein)
+        # If both APIs return data, clear any fault indication.
+        if humidity_data and temperature_data:
+            if self.indicator_service:
+                self.indicator_service.set_fault_led(False)
+        else:
+            # Falls ein API-Fehler auftritt, turn on fault LED and return cached data (which may be empty).
+            if self.indicator_service:
+                self.indicator_service.set_fault_led(True)
             return self.cached_stations
 
         # Daten kombinieren und im Cache ablegen
@@ -46,6 +54,8 @@ class StationService:
             return data.get("features", [])
         except Exception as e:
             logging.error(f"Error fetching data from {url}: {e}")
+            if self.indicator_service:
+                self.indicator_service.set_fault_led(True)
             return None
 
     def _combine_data(self, humidity_data, temperature_data):
@@ -82,3 +92,7 @@ class StationService:
             "data": {"total_stations": len(self.cached_stations)}
         }
         self.logging_service.log(entry)
+        
+    # New method to set the indicator service
+    def set_indicator_service(self, indicator_service):
+        self.indicator_service = indicator_service

@@ -5,8 +5,8 @@ from abc import ABC, abstractmethod
 
 class SensorInterface(ABC):
     """
-    Ein generisches Sensor-Interface mit einer Methode zum Auslesen
-    von Messwerten. Ermöglicht eine einfache Austauschbarkeit oder Mocking.
+    A generic sensor interface with a method to read values.
+    Enables easy replacement or mocking.
     """
     @abstractmethod
     def read_sensor(self):
@@ -14,45 +14,59 @@ class SensorInterface(ABC):
 
 class SHT31Sensor(SensorInterface):
     """
-    Spezialisiert auf das Auslesen der Temperatur und Luftfeuchtigkeit
-    von einem SHT31-Sensor per I2C.
+    Specialized sensor service for reading temperature and humidity
+    from a SHT31 sensor via I2C.
     """
-    SHT31_I2C_ADDR = 0x44  # Standard-I2C-Adresse des SHT31
+    SHT31_I2C_ADDR = 0x44  # Standard I2C address for SHT31
 
-    def __init__(self, bus_id=1):
-        # Erstellt ein SMBus-Objekt (I2C-Bus), Standard ist häufig Bus #1
+    def __init__(self, bus_id=1, indicator_service=None):
+        """
+        Initializes the sensor with the specified I2C bus.
+        Optionally accepts an indicator_service to control the fault LED.
+        """
         self.bus = smbus2.SMBus(bus_id)
+        self.indicator_service = indicator_service
 
     def read_sensor(self):
         """
-        Liest Temperatur und relative Luftfeuchtigkeit vom SHT31-Sensor.
-        Gibt ein Tupel (temperature, humidity) zurück.
+        Reads temperature and relative humidity from the SHT31 sensor.
+        Returns a tuple (temperature, humidity).
+        
+        If the reading is successful and within plausible ranges, the fault LED is turned off.
+        If any error occurs or the values are out of range, the fault LED is turned on and a
+        RuntimeError is raised.
         """
         try:
-            # Sende den "Single shot measurement"-Befehl
+            # Send the "single shot measurement" command.
             self.bus.write_i2c_block_data(self.SHT31_I2C_ADDR, 0x24, [0x00])
-            time.sleep(0.015)  # Kurze Wartezeit, damit der Sensor messen kann
+            time.sleep(0.015)  # Short wait for sensor measurement
 
-            # Lese 6 Bytes: [MSB Temp, LSB Temp, CRC Temp, MSB Feuchte, LSB Feuchte, CRC Feuchte]
+            # Read 6 bytes: [MSB Temp, LSB Temp, CRC Temp, MSB Humidity, LSB Humidity, CRC Humidity]
             data = self.bus.read_i2c_block_data(self.SHT31_I2C_ADDR, 0x00, 6)
 
-            # Rohwerte zusammensetzen
+            # Assemble raw values
             raw_temp = (data[0] << 8) | data[1]
             raw_hum = (data[3] << 8) | data[4]
 
-            # Umrechnung anhand Datenblatt
+            # Convert raw values using the humidity formula
             temperature = -45 + (175 * (raw_temp / 65535.0))
             humidity = 100 * (raw_hum / 65535.0)
 
-            # Plausibilitätsprüfung der Werte
+            # Plausibility check
             if not (-40 <= temperature <= 125):
                 raise ValueError("Temperature out of range")
             if not (0 <= humidity <= 100):
                 raise ValueError("Humidity out of range")
 
+            # Reading successful: clear any fault LED if indicator_service is available.
+            if self.indicator_service:
+                self.indicator_service.set_fault_led(False)
+
             return temperature, humidity
 
         except Exception as e:
             logging.error(f"Error reading sensor: {e}")
-            # Verpackt jede Exception in eine RuntimeError
+            # On error, trigger the fault LED if available.
+            if self.indicator_service:
+                self.indicator_service.set_fault_led(True)
             raise RuntimeError(f"Error reading sensor: {e}")

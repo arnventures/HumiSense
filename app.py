@@ -10,6 +10,7 @@ from services.regulation_service import RegulationService
 from services.sensor_service import SHT31Sensor
 from services.relay_service import RelayService
 from services.log_reader_service import LogReaderService
+from services.indicator_service import IndicatorService
 from config import Config
 
 app = Flask(__name__)
@@ -27,8 +28,14 @@ sensor = SHT31Sensor()
 regulation_service = RegulationService(sensor, station_service, parameter_service, logging_service, relay_service)
 log_reader_service = LogReaderService(parameter_service)
 
+
 # Start background services (e.g., regulation thread)
 regulation_service.start()
+
+# Initialize the new IndicatorService.
+indicator_service = IndicatorService()
+# Turn on the run LED to indicate that the system is powered and running.
+indicator_service.set_run_led(True)
 
 # Dependency Injection: Store services in app.config for use in routes.
 app.config["PARAMETER_SERVICE"] = parameter_service
@@ -37,6 +44,7 @@ app.config["STATION_SERVICE"] = station_service
 app.config["REGULATION_SERVICE"] = regulation_service
 app.config["RELAY_SERVICE"] = relay_service
 app.config["LOG_READER_SERVICE"] = log_reader_service
+app.config["INDICATOR_SERVICE"] = indicator_service
 
 
 import time
@@ -61,3 +69,4 @@ if __name__ == "__main__":
     finally:
         regulation_service.stop()
         relay_service.cleanup()
+        indicator_service.cleanup()

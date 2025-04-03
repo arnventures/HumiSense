@@ -90,7 +90,7 @@ class RegulationService(threading.Thread):
             # Absolute Feuchte innen
             inside_ah = self.compute_absolute_humidity(local_rh, local_temp)
 
-            # API-Station (außen) abrufen
+            # API-Station (aussen) abrufen
             api_station = self.get_api_station()
             if api_station and api_station.temperature is not None and api_station.humidity is not None:
                 outside_ah = self.compute_absolute_humidity(api_station.humidity, api_station.temperature)
